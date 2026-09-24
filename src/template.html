@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>妙手回春模拟器 · 王者荣耀世界同人小游戏</title>
+<style>
+:root{
+  --ink:#5a3d2b;          /* 深棕主文字 */
+  --ink-sub:#8a6a52;
+  --cream:#fdf6e9;        /* 奶油卡片 */
+  --cream-line:#e8d5b5;
+  --mint:#7fd0a8;         /* 任务卡描边 */
+  --frame:#7c5138;        /* 棋盘木框 */
+  --frame-deep:#674027;
+  --red:#e05c5c;
+  --gold:#e8a83c;
+  /* 四色符石（参考游戏内 pastel 质感） */
+  --t-red:#f2a398;  --t-red-hi:#f9c4bb;
+  --t-yel:#f6dd8d;  --t-yel-hi:#fbeec2;
+  --t-blu:#a7c9f0;  --t-blu-hi:#cbe0fa;
+  --t-grn:#a6e2ad;  --t-grn-hi:#c9f0cf;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;}
+body{
+  font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;
+  color:var(--ink);
+  background:linear-gradient(180deg,#f0d9b9 0%,#e6c39b 55%,#dbb287 100%);
+  overflow-x:hidden;
+  user-select:none;-webkit-user-select:none;
+  touch-action:manipulation;
+}
+/* 页面背景（游戏内原画） */
+#bg{position:fixed;inset:0;z-index:-2;pointer-events:none;
+  background:url(__B64_BG__) 20% 62%/cover no-repeat,
+             linear-gradient(180deg,#f0d9b9 0%,#e6c39b 55%,#dbb287 100%);}
+#bg::after{content:"";position:absolute;inset:0;
+  background:radial-gradient(120% 90% at 50% 100%,rgba(120,72,40,.16),transparent 55%);}
+
+#app{
+  position:relative;
+  max-width:480px;
+  min-height:100vh;min-height:100dvh;
+  margin:0 auto;
+  display:flex;flex-direction:column;
+  padding:calc(10px + env(safe-area-inset-top)) 16px calc(10px + env(safe-area-inset-bottom));
+  background:linear-gradient(180deg,rgba(255,243,224,.35),rgba(255,243,224,0) 30%);
+  box-shadow:0 0 60px rgba(120,72,40,.25);
+}
+
+/* ===== 顶栏 ===== */
+header{position:relative;z-index:5;display:flex;align-items:flex-start;justify-content:space-between;padding:2px 2px 8px;}
+.brand h1{font-size:20px;font-weight:800;letter-spacing:4px;color:#6b4226;
+  text-shadow:0 1px 0 rgba(255,255,255,.5);}
+.brand .sub{font-size:9.5px;color:var(--ink-sub);letter-spacing:2px;margin-top:2px;}
+.brand .score{font-size:11px;color:var(--ink-sub);margin-top:4px;}
+.brand .score b{color:#c77f1f;font-size:13px;}
+.iconbtns{display:flex;gap:8px;}
+.icobtn{
+  width:36px;height:36px;border-radius:50%;
+  background:rgba(253,246,233,.9);
+  border:1.5px solid rgba(122,81,56,.35);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 2px 6px rgba(122,81,56,.25);
+  cursor:pointer;
+}
+.icobtn:active{transform:scale(.92);}
+.icobtn svg{width:18px;height:18px;}
+
+/* ===== 任务卡 + 师姐 ===== */
+#stage{position:relative;display:flex;align-items:flex-end;min-height:172px;}
+#quest{
+  position:relative;z-index:2;
+  background:var(--cream);
+  border:2.5px solid var(--mint);
+  border-radius:18px;
+  padding:10px 16px 10px 14px;
+  max-width:62%;
+  box-shadow:0 4px 12px rgba(122,81,56,.22);
+}
+#quest .lv{font-size:16px;font-weight:800;color:#5a3d2b;letter-spacing:1px;}
+#quest .goal{font-size:12px;color:#7a5a42;margin-top:3px;letter-spacing:.5px;}
+#quest .goal b{font-weight:800;}
+#quest .fails{font-size:10px;color:#b08a68;margin-top:3px;}
+#shijie{
+  position:absolute;right:2px;bottom:-6px;z-index:1;
+  width:128px;pointer-events:auto;cursor:pointer;
+  filter:drop-shadow(0 6px 10px rgba(122,81,56,.35));
+  transition:transform .25s, filter .25s;
+}
+#shijie img{width:100%;display:block;}
+#shijie.cheer{animation:cheer .8s ease;}
+@keyframes cheer{25%{transform:translateY(-14px) rotate(-3deg);}55%{transform:translateY(-6px) rotate(2.5deg);}80%{transform:translateY(-10px);}}
+#shijie.sad{filter:drop-shadow(0 6px 10px rgba(122,81,56,.35)) saturate(.35) brightness(.92);transform:rotate(-5deg) translateY(4px);}
+#shijie.boost{animation:boostin .6s ease;}
+@keyframes boostin{0%{transform:translateX(60px) scale(.6);opacity:0;}100%{transform:none;opacity:1;}}
+/* 师姐气泡 */
+#bubble{
+  position:absolute;right:116px;bottom:88px;z-index:3;
+  background:var(--cream);
+  border:2px solid var(--mint);
+  color:#4f7a5f;
+  font-size:12px;font-weight:700;
+  padding:7px 12px;border-radius:14px;
+  box-shadow:0 4px 10px rgba(122,81,56,.25);
+  opacity:0;transform:scale(.7);transform-origin:bottom right;
+  transition:opacity .2s,transform .2s;
+  max-width:190px;line-height:1.5;pointer-events:none;
+}
+#bubble.show{opacity:1;transform:scale(1);}
+#bubble::after{content:"";position:absolute;right:-8px;bottom:10px;width:14px;height:14px;
+  background:var(--cream);border-right:2px solid var(--mint);border-bottom:2px solid var(--mint);
+  transform:rotate(-45deg);}
+
+/* ===== 棋盘 ===== */
+#boardwrap{
+  margin-top:6px;
+  background:linear-gradient(180deg,var(--frame),var(--frame-deep));
+  border-radius:18px;
+  padding:10px 10px 12px;
+  box-shadow:0 8px 20px rgba(90,50,25,.4),inset 0 2px 0 rgba(255,220,180,.25);
+}
+#stepsline{
+  text-align:left;
+  padding:2px 0 8px 8px;
+  color:#ffe4c4;
+  font-size:14px;font-weight:700;letter-spacing:1px;
+  text-shadow:0 1px 2px rgba(60,30,10,.5);
+}
+#stepsline b{font-size:18px;color:#fff;}
+#stepsline .assist-tag{
+  display:inline-block;margin-left:6px;
+  background:var(--mint);color:#2c5b40;
+  font-size:10px;font-weight:800;
+  padding:2px 8px;border-radius:999px;vertical-align:2px;
+  text-shadow:none;
+}
+#board{
+  display:grid;grid-template-columns:repeat(9,1fr);gap:4px;
+  background:rgba(60,35,18,.35);
+  padding:6px;border-radius:12px;
+}
+.cell{
+  position:relative;aspect-ratio:1;border-radius:6px;cursor:pointer;
+  transition:transform .08s;
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.5),inset 0 -3px 0 rgba(0,0,0,.1);
+  overflow:hidden;
+}
+.cell::after{content:"";position:absolute;left:14%;top:10%;width:40%;height:22%;
+  background:rgba(255,255,255,.5);border-radius:50%;opacity:.5;pointer-events:none;}
+.cell:active{transform:scale(.9);}
+.cell.c0{background:linear-gradient(180deg,var(--t-red-hi),var(--t-red) 45%);}
+.cell.c1{background:linear-gradient(180deg,var(--t-yel-hi),var(--t-yel) 45%);}
+.cell.c2{background:linear-gradient(180deg,var(--t-blu-hi),var(--t-blu) 45%);}
+.cell.c3{background:linear-gradient(180deg,var(--t-grn-hi),var(--t-grn) 45%);}
+.cell.pop{animation:cellpop .22s ease;}
+@keyframes cellpop{40%{transform:scale(1.1);}}
+.cell.guideflash{animation:gflash .6s ease 4;}
+@keyframes gflash{50%{box-shadow:0 0 0 3px #fff,0 0 16px 4px rgba(255,255,255,.95),inset 0 -3px 0 rgba(0,0,0,.1);}}
+/* 颜料泼溅（游戏内同款染色效果） */
+.splash{position:absolute;inset:-30%;z-index:2;pointer-events:none;
+  background:
+    radial-gradient(circle at 50% 46%, var(--sc) 0 40%, transparent 41%),
+    radial-gradient(circle at 16% 18%, var(--sc) 0 8%, transparent 9%),
+    radial-gradient(circle at 84% 22%, var(--sc) 0 6%, transparent 7%),
+    radial-gradient(circle at 22% 84%, var(--sc) 0 7%, transparent 8%),
+    radial-gradient(circle at 80% 80%, var(--sc) 0 5%, transparent 6%),
+    radial-gradient(circle at 60% 8%,  var(--sc) 0 4%, transparent 5%);
+  border-radius:48% 52% 55% 45%/52% 46% 54% 48%;
+  transform:scale(.15) rotate(-8deg);opacity:0;
+  animation:splashin .36s ease-out forwards;
+}
+@keyframes splashin{
+  0%{transform:scale(.15) rotate(-8deg);opacity:0;}
+  30%{opacity:1;}
+  62%{transform:scale(1.3) rotate(3deg);opacity:1;}
+  100%{transform:scale(1.5) rotate(6deg);opacity:0;}
+}
+.ripple{position:absolute;border-radius:50%;background:rgba(255,255,255,.6);
+  transform:scale(0);animation:rip .38s ease-out forwards;pointer-events:none;z-index:3;}
+@keyframes rip{to{transform:scale(2.6);opacity:0;}}
+.shake{animation:shk .3s;}
+@keyframes shk{20%,60%{transform:translateX(-4px);}40%,80%{transform:translateX(4px);}}
+
+/* ===== 画笔（游戏内同款竖排改横排） ===== */
+#brushes{
+  margin-top:12px;
+  background:rgba(253,246,233,.75);
+  border:1.5px solid rgba(122,81,56,.25);
+  border-radius:18px;
+  padding:10px 8px 8px;
+  display:grid;grid-template-columns:repeat(4,1fr);gap:6px;
+  box-shadow:0 4px 12px rgba(122,81,56,.18);
+}
+.brush{
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:4px 2px;border-radius:14px;cursor:pointer;
+  border:2.5px solid transparent;
+  transition:border-color .15s,transform .12s;
+}
+.brush:active{transform:scale(.94);}
+.brush .pen{width:40px;height:40px;display:flex;align-items:center;justify-content:center;}
+.brush .pen svg{width:34px;height:34px;transform:rotate(8deg);}
+.brush .bn{font-size:11px;font-weight:700;color:var(--ink);letter-spacing:1px;}
+.brush .bn i{font-style:normal;color:#b08a68;margin-right:3px;font-size:10px;}
+.brush.active{border-color:var(--red);background:rgba(255,255,255,.65);}
+.brush.active .pen{animation:penbob 1.2s ease infinite;}
+@keyframes penbob{50%{transform:translateY(-3px);}}
+.brush.hintbtn{animation:hintshake .45s ease 3;}
+@keyframes hintshake{25%{transform:translateX(-4px);}75%{transform:translateX(4px);}}
+
+/* ===== 按钮行 ===== */
+#actions{margin-top:12px;display:flex;gap:10px;}
+.abtn{
+  flex:1;display:flex;align-items:center;justify-content:center;gap:7px;
+  padding:11px 0;border-radius:14px;
+  background:linear-gradient(180deg,#fff8ec,#f5e3c4);
+  border:1.5px solid rgba(122,81,56,.4);
+  color:#6b4226;font-size:14px;font-weight:800;letter-spacing:2px;
+  box-shadow:0 4px 10px rgba(122,81,56,.25);
+  cursor:pointer;
+}
+.abtn:active{transform:scale(.96);}
+.abtn svg{width:16px;height:16px;}
+.abtn.world{background:linear-gradient(180deg,#e4f6ec,#c8ecd8);border-color:#6fbf95;color:#2c6b45;}
+
+/* ===== 教程（师姐引导） ===== */
+#tut{position:fixed;inset:0;z-index:80;display:none;}
+#tut.show{display:block;}
+#tuthole{
+  position:fixed;border-radius:14px;
+  box-shadow:0 0 0 9999px rgba(58,36,18,.62);
+  transition:top .25s,left .25s,width .25s,height .25s;
+  pointer-events:none;
+}
+#tutcard{
+  position:fixed;z-index:81;
+  display:flex;gap:10px;align-items:flex-start;
+  width:min(86vw,330px);
+  background:var(--cream);
+  border:2.5px solid var(--mint);
+  border-radius:16px;padding:12px 14px;
+  box-shadow:0 10px 26px rgba(60,35,15,.45);
+  transition:top .25s,left .25s;
+}
+#tutcard img{width:52px;flex:0 0 52px;margin-top:2px;
+  filter:drop-shadow(0 3px 5px rgba(122,81,56,.3));}
+#tutcard .who{font-size:11px;color:#3fa668;font-weight:800;letter-spacing:2px;margin-bottom:3px;}
+#tutcard .txt{font-size:13px;color:var(--ink);line-height:1.65;}
+#tutbtns{display:flex;gap:8px;margin-top:10px;}
+#tutbtns .tbtn{
+  flex:1;padding:8px 0;border-radius:10px;border:none;cursor:pointer;
+  font-size:12.5px;font-weight:800;letter-spacing:1px;color:#fff;
+  background:linear-gradient(180deg,#66c893,#3fa668);
+}
+#tutbtns .tbtn.skip{background:rgba(122,81,56,.14);color:var(--ink-sub);}
+#tutdots{margin-top:8px;text-align:center;}
+#tutdots i{display:inline-block;width:6px;height:6px;border-radius:50%;
+  background:#d9c6a8;margin:0 3px;}
+#tutdots i.on{background:#3fa668;}
+
+/* ===== 选关面板 ===== */
+#levelpanel{
+  margin-top:12px;
+  background:rgba(253,246,233,.75);
+  border:1.5px solid rgba(122,81,56,.25);
+  border-radius:18px;
+  padding:10px 12px 12px;
+  box-shadow:0 4px 12px rgba(122,81,56,.18);
+}
+#lp-head{display:flex;justify-content:space-between;align-items:baseline;}
+#lp-mode{font-size:13px;font-weight:800;color:#6b4226;letter-spacing:2px;}
+#lp-count{font-size:10px;color:#b08a68;letter-spacing:1px;}
+#chips{
+  margin-top:8px;
+  display:grid;grid-template-columns:repeat(10,1fr);gap:5px;
+  max-height:74px;overflow-y:auto;
+}
+#chips::-webkit-scrollbar{width:4px;}
+#chips::-webkit-scrollbar-thumb{background:rgba(122,81,56,.3);border-radius:2px;}
+.chip{
+  aspect-ratio:1;border-radius:8px;
+  background:rgba(255,255,255,.6);
+  border:1.5px solid rgba(122,81,56,.25);
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:700;color:#7a5a42;
+  cursor:pointer;
+  transition:transform .1s;
+}
+.chip:active{transform:scale(.9);}
+.chip.cur{
+  background:linear-gradient(180deg,#fff8ec,#f0dcb8);
+  border-color:rgba(122,81,56,.6);color:#6b4226;font-weight:800;
+  box-shadow:0 3px 8px rgba(122,81,56,.35),inset 0 1px 0 rgba(255,255,255,.8);
+}
+.chip.done{background:#cdeed9;color:#2c6b45;border-color:#6fbf95;}
+.chip.done.cur{
+  background:linear-gradient(180deg,#fff8ec,#f0dcb8);
+  border-color:rgba(122,81,56,.6);color:#6b4226;
+}
+.chip.lock{
+  background:rgba(122,81,56,.07);
+  border-color:rgba(122,81,56,.14);
+  color:#c9b8a4;cursor:not-allowed;
+}
+.chip.lock svg{width:11px;height:11px;opacity:.6;}
+.shake2{animation:shk .3s;}
+@keyframes shk{20%,60%{transform:translateX(-4px);}40%,80%{transform:translateX(4px);}}
+
+/* ===== 页脚 ===== */
+footer{margin-top:auto;padding-top:10px;text-align:center;font-size:9px;color:rgba(122,81,56,.55);letter-spacing:1px;line-height:1.7;}
+
+/* =====  toast ===== */
+#toast{
+  position:fixed;left:50%;top:16%;transform:translateX(-50%) translateY(-8px);
+  background:rgba(70,45,28,.92);color:#ffe9cf;
+  font-size:13px;font-weight:700;letter-spacing:1px;
+  padding:9px 18px;border-radius:999px;
+  box-shadow:0 6px 16px rgba(60,35,15,.4);
+  opacity:0;transition:opacity .2s,transform .2s;z-index:60;pointer-events:none;
+  white-space:nowrap;
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* ===== 胜利遮罩 ===== */
+#overlay{
+  position:fixed;inset:0;z-index:50;display:none;
+  align-items:center;justify-content:center;
+  background:rgba(80,50,28,.45);backdrop-filter:blur(3px);padding:24px;
+}
+#overlay.show{display:flex;}
+.card{
+  width:100%;max-width:330px;
+  background:var(--cream);
+  border:2.5px solid var(--mint);
+  border-radius:20px;padding:24px 20px 20px;text-align:center;
+  box-shadow:0 18px 44px rgba(80,50,25,.45);
+  animation:cardin .28s ease;
+}
+@keyframes cardin{from{transform:translateY(16px) scale(.96);opacity:0;}}
+.card .big{font-size:24px;font-weight:800;letter-spacing:3px;color:#2f8f5b;margin-bottom:8px;}
+.card .sub{font-size:12.5px;color:var(--ink-sub);line-height:1.7;margin-bottom:12px;}
+.card .sub b{color:#c77f1f;}
+.card .gain{font-size:15px;font-weight:800;color:#c77f1f;margin-bottom:16px;}
+.btnrow{display:flex;gap:10px;}
+.btn{
+  flex:1;padding:12px 0;border-radius:12px;border:none;cursor:pointer;
+  font-size:14px;font-weight:800;letter-spacing:2px;color:#fff;
+  background:linear-gradient(180deg,#66c893,#3fa668);
+  box-shadow:0 6px 14px rgba(63,166,104,.4);
+}
+.btn.ghost{background:rgba(122,81,56,.12);color:var(--ink);box-shadow:none;
+  border:1.5px solid rgba(122,81,56,.3);}
+.btn:active{transform:scale(.97);}
+
+/* 胜利花瓣 */
+.petal{position:fixed;width:14px;height:14px;z-index:60;pointer-events:none;
+  border-radius:60% 40% 60% 40%;
+  animation:petalfall linear forwards;}
+@keyframes petalfall{
+  0%{transform:translateY(-30px) rotate(0);opacity:1;}
+  85%{opacity:1;}
+  100%{transform:translateY(105vh) rotate(560deg);opacity:0;}
+}
+
+@media (max-height:700px){
+  #stage{min-height:142px;}
+  #shijie{width:106px;}
+  #bubble{bottom:74px;right:94px;}
+}
+</style>
+</head>
+<body>
+
+<div id="bg"></div>
+
+<div id="app">
+  <header>
+    <div class="brand">
+      <h1>妙手回春模拟器</h1>
+      <div class="sub">作者：酸奶很忙o</div>
+      <div class="score">得分 <b id="score">0</b> · 最高纪录 <b id="best">0</b></div>
+    </div>
+    <div class="iconbtns">
+      <div class="icobtn" id="btnTut" title="玩法教程">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#7c5138" stroke-width="2.4" stroke-linecap="round">
+          <path d="M9.2 9 a3 3 0 1 1 4.6 2.5 c-1 .7-1.8 1.4-1.8 2.7"/>
+          <circle cx="12" cy="18" r="1" fill="#7c5138"/>
+        </svg>
+      </div>
+      <div class="icobtn" id="btnSound" title="音效开关">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#7c5138" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 9 v6 h4 l5 4 V5 L8 9 Z" fill="#7c5138"/>
+          <path id="soundwave" d="M16 9 a5 5 0 0 1 0 6"/>
+        </svg>
+      </div>
+    </div>
+  </header>
+
+  <!-- 任务卡 + 师姐 -->
+  <section id="stage">
+    <div id="quest">
+      <div class="lv" id="questlv">修炼-1</div>
+      <div class="goal">全部颜色格恢复为<span class="gwrap" id="goalwrap">【<b id="targetname">绿色</b>】</span></div>
+      <div class="fails" id="failline"></div>
+    </div>
+    <div id="bubble"></div>
+    <div id="shijie"><img id="shijieimg" alt="师姐"></div>
+  </section>
+
+  <!-- 棋盘 -->
+  <section id="boardwrap">
+    <div id="stepsline">剩余步数：<b id="mana">5</b><span class="assist-tag" id="assisttag" style="display:none">师姐助力 +2</span></div>
+    <div id="board"></div>
+  </section>
+
+  <!-- 画笔 -->
+  <section id="brushes">
+    <div class="brush" data-c="0">
+      <div class="pen"><svg viewBox="0 0 40 40"><path d="M26 4 L36 14 L30 20 L20 10 Z" fill="#8a5a34"/><path d="M21 11 L29 19 L17 31 C13 35 6 36 4 36 C4 34 5 27 9 23 Z" fill="#f2a398"/><path d="M9 23 C5 27 4 34 4 36 C7 35 12 33 15 30 L10 25 Z" fill="#e05c5c"/></svg></div>
+      <div class="bn"><i>1</i>红色</div>
+    </div>
+    <div class="brush" data-c="1">
+      <div class="pen"><svg viewBox="0 0 40 40"><path d="M26 4 L36 14 L30 20 L20 10 Z" fill="#8a5a34"/><path d="M21 11 L29 19 L17 31 C13 35 6 36 4 36 C4 34 5 27 9 23 Z" fill="#f6dd8d"/><path d="M9 23 C5 27 4 34 4 36 C7 35 12 33 15 30 L10 25 Z" fill="#d9a520"/></svg></div>
+      <div class="bn"><i>2</i>黄色</div>
+    </div>
+    <div class="brush" data-c="2">
+      <div class="pen"><svg viewBox="0 0 40 40"><path d="M26 4 L36 14 L30 20 L20 10 Z" fill="#8a5a34"/><path d="M21 11 L29 19 L17 31 C13 35 6 36 4 36 C4 34 5 27 9 23 Z" fill="#a7c9f0"/><path d="M9 23 C5 27 4 34 4 36 C7 35 12 33 15 30 L10 25 Z" fill="#4a90d9"/></svg></div>
+      <div class="bn"><i>3</i>蓝色</div>
+    </div>
+    <div class="brush" data-c="3">
+      <div class="pen"><svg viewBox="0 0 40 40"><path d="M26 4 L36 14 L30 20 L20 10 Z" fill="#8a5a34"/><path d="M21 11 L29 19 L17 31 C13 35 6 36 4 36 C4 34 5 27 9 23 Z" fill="#a6e2ad"/><path d="M9 23 C5 27 4 34 4 36 C7 35 12 33 15 30 L10 25 Z" fill="#3fa65a"/></svg></div>
+      <div class="bn"><i>4</i>绿色</div>
+    </div>
+  </section>
+
+  <!-- 按钮行 -->
+  <section id="actions">
+    <div class="abtn" id="btnReset">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 10 a8 8 0 1 1 2 6"/><path d="M4 4 v6 h6"/></svg>
+      重置
+    </div>
+    <div class="abtn world" id="btnMode">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21 V10 l8-7 8 7 v11"/><path d="M9 21 v-6 h6 v6"/></svg>
+      <span id="modelabel">世界模式</span>
+    </div>
+  </section>
+
+  <!-- 选关面板 -->
+  <section id="levelpanel">
+    <div id="lp-head">
+      <span id="lp-mode">修炼模式</span>
+      <span id="lp-count">共 30 关 · 点数字选关</span>
+    </div>
+    <div id="chips"></div>
+  </section>
+
+  <footer>
+    王者荣耀世界 · 同人二创小游戏（非官方）<br>
+    kimi-k3模型复刻，师姐立绘采集于网络
+  </footer>
+</div>
+
+<!-- 教程 -->
+<div id="tut">
+  <div id="tuthole"></div>
+  <div id="tutcard">
+    <img id="tutimg" alt="师姐">
+    <div style="flex:1">
+      <div class="who">师姐</div>
+      <div class="txt" id="tuttxt"></div>
+      <div id="tutdots"></div>
+      <div id="tutbtns">
+        <button class="tbtn skip" id="tutskip">跳过</button>
+        <button class="tbtn" id="tutnext">下一步</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<div id="overlay">
+  <div class="card">
+    <div class="big" id="ovtitle">妙手回春</div>
+    <div class="sub" id="ovsub"></div>
+    <div class="gain" id="ovgain"></div>
+    <div class="btnrow" id="ovbtns"></div>
+  </div>
+</div>
+
+<script>
+/* =====================================================================
+   妙手回春模拟器 · 王者荣耀世界同人小游戏
+   机制：选画笔 → 点一格 → 该格所在连通同色区整片变为画笔色
+   目标：步数耗尽前，把 63 格全部恢复为目标色
+   ===================================================================== */
+(function(){
+"use strict";
+
+/* ---------- 常量 ---------- */
+var COLS = 9, ROWS = 7, N = COLS * ROWS;
+var COLOR_NAMES = ["红色", "黄色", "蓝色", "绿色"];
+var COLOR_TEXT = ["#d9534f", "#d9a520", "#4a90d9", "#3fa65a"];
+var PETAL_COLORS = ["#f2a398", "#f6dd8d", "#a7c9f0", "#a6e2ad"];
+
+/* 世界模式：原游戏 画盘1~13（真实关卡数据） */
+var WORLD_LEVELS = [
+  {grid:'YYYYYYYYYYYYYRRRRRYYYYRRRRRYYYYRRRRRYYYYRRRRRYYYYRRRRRYYYYRRRRR',target:1,budget:1,tap:[2, 5],seq:'Y'},
+  {grid:'GGGYYYYBBGGGYYYYBBGGGYYYYBBGGGYYYYBBGGGYYYYBBGGGYYYYBBGGGYYYYBB',target:3,budget:2,tap:[1, 4],seq:'BG'},
+  {grid:'RRYRRRRRRRRYRRRRRRBBYBBBBBBBBYBBBBBBGGYGGGGGGGGYGGGGGGRRYRRRRRR',target:2,budget:3,tap:[1, 3],seq:'RGB'},
+  {grid:'RRBBBBRRRGGGGGGGGGRRBBBBRRRGGGGGGGGRRRBBBBRRRRRRRRRRRRRRBBBBRRR',target:3,budget:3,tap:[2, 1],seq:'RBG'},
+  {grid:'YYYYYYYGGBBBBBGGGGYYYYYYYYRGGRRRRRRRBBBBBBBBGYYGGGGGGGYYRRRRRRR',target:0,budget:4,tap:[3, 9],seq:'GYBR'},
+  {grid:'GGGGGGGRRYYYYYBBBRYBRRRRRBRYBGGGGRBRYBGGRRRYRRBBYYYYYRRRRRBBBRR',target:3,budget:4,tap:[3, 3],seq:'YRBG'},
+  {grid:'GGGGGYYYYYYYYYRRRYYRRGGGGRYYRYYRRGRYYRYYYYGRYYRRBBBBBYGGGGRRRRR',target:0,budget:4,tap:[2, 6],seq:'BYGR'},
+  {grid:'RGYBRGBRGRGYBRBRRBRGYBBBRBGRGYBRBRRGRGBYRBRRGRBYYRBRRGGGYYRBRRG',target:2,budget:5,tap:[1, 8],seq:'BYGRB'},
+  {grid:'BYGBBGGRRBYGYBGGRYBYGYBGGRYBYGYBRBRYBYGYBRBRYBYGYRRBBYBYGYRRBBY',target:2,budget:4,tap:[1, 4],seq:'GRYB'},
+  {grid:'RGGGBBBBBRYYRRRRRRRYBBBGGGRRYBBBBBGYRYBBBBBRYRYYYRRRRYRRBBBBBBB',target:0,budget:4,tap:[2, 4],seq:'YGBR'},
+  {grid:'BBRRRRRYYBGGGBBBRRBGYRRRRYRBRYGGGGYRGRYYYYGYRGRRRRRYYRGGYYYBBBB',target:0,budget:5,tap:[3, 8],seq:'RBYGR'},
+  {grid:'BBYYYYYRRYBBYYYRRYYYBBGRRYYYYYGRBYYYYYRRYBBYYYRRYYYBBYRRYYYYYBB',target:3,budget:5,tap:[1, 8],seq:'YBYRG'},
+  {grid:'GGGYYYYYYRRRBBBBBYGGGGGRRRRYYBBBBBRRRRRRYYYYYBBBGGGBBYBBBBRRRRR',target:3,budget:5,tap:[3, 1],seq:'BYRBG'},
+  {grid:'GYBRRGGYBGYBRYBRYBGYBRYBRYRGYBGYBRYRRYBGYBRBRRRBGYYRBRRRBGYYBBR',target:2,budget:5,tap:[1, 3],seq:'RGYRB'},
+{grid:'GGGRRYYGYYBBBRRYGYYBYBYYGGYYYYBYRRRYGBGGYYRRBGBBGBBBBBGBBGYYYYY',target:2,budget:5,tap:[2, 2],seq:'YGRYB'},
+{grid:'RRRGGRRRRRRRGGRRRRYBYBYBYBYBYBYBYBYBRRRGGRRRRBBBGBBBBBRRRGGRRRR',target:2,budget:5,tap:[3, 5],seq:'BGRYB'}];
+var COLOR_IDX = {R:0, Y:1, B:2, G:3};
+
+/* 修炼模式：30 个固定关卡（离线生成，方便玩家复盘） */
+var TRAIN_LEVELS = [__TRAIN_LEVELS__];
+
+var TALK_WIN = ["妙手回春，名不虚传。", "漂亮，师姐没看错人。", "这一关，干净利落。"];
+var TALK_ASSIST = "看不下去了……偷偷给你加 2 步，别再浪啦。";
+
+/* ---------- 状态 ---------- */
+var board = [], initialBoard = [];
+var target = 0, brush = 0;   // 默认红色画笔
+var stepsLeft = 0, budget = 0, refSteps = 0;
+var mode = "train";          // train 修炼 | world 世界
+var round = 1;               // 修炼关数（1~30，固定关卡）
+var worldIdx = 0;            // 世界关卡下标
+var failCount = 0, assistOn = false;
+var score = 0, best = 0;
+var over = false, soundOn = true;
+var clearedTrain = {}, clearedWorld = {};   // 已通关标记（选关面板用）
+
+var $ = function(id){ return document.getElementById(id); };
+var boardEl = $("board"), manaEl = $("mana");
+
+best = parseInt(localStorage.getItem("mshc_best") || "0", 10) || 0;
+soundOn = localStorage.getItem("mshc_sound") !== "0";
+round = Math.min(30, Math.max(1, parseInt(localStorage.getItem("mshc_tr") || "1", 10) || 1));
+worldIdx = Math.min(12, Math.max(0, parseInt(localStorage.getItem("mshc_wi") || "0", 10) || 0));
+try{ clearedTrain = JSON.parse(localStorage.getItem("mshc_ct") || "{}") || {}; }catch(e){}
+try{ clearedWorld = JSON.parse(localStorage.getItem("mshc_cw") || "{}") || {}; }catch(e){}
+
+function saveProgress(){
+  try{
+    localStorage.setItem("mshc_tr", String(round));
+    localStorage.setItem("mshc_wi", String(worldIdx));
+    localStorage.setItem("mshc_ct", JSON.stringify(clearedTrain));
+    localStorage.setItem("mshc_cw", JSON.stringify(clearedWorld));
+  }catch(e){}
+}
+
+/* ---------- 音效 ---------- */
+var AC = null;
+function ac(){ if(!AC){ try{ AC = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } if(AC && AC.state==="suspended"){ AC.resume(); } return AC; }
+function tone(f, d, type, vol, when){
+  if(!soundOn) return; var ctx = ac(); if(!ctx) return;
+  var o = ctx.createOscillator(), g = ctx.createGain();
+  o.type = type||"sine"; o.frequency.value = f;
+  var t = ctx.currentTime + (when||0);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol||0.1, t+0.015);
+  g.gain.exponentialRampToValueAtTime(0.0001, t+d);
+  o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t+d+0.05);
+}
+var sfx = {
+  dye: function(c){ tone(400+c*100, .1, "sine", .1); tone(620+c*100, .08, "triangle", .045, .02); },
+  pick: function(){ tone(500, .06, "triangle", .05); },
+  bad: function(){ tone(150, .14, "sawtooth", .07); },
+  reset: function(){ tone(300, .08, "sine", .07); tone(240, .1, "sine", .06, .07); },
+  boost: function(){ [392,523,659].forEach(function(f,i){ tone(f, .16, "sine", .1, i*.07); }); },
+  win: function(){ [523,659,784,1047].forEach(function(f,i){ tone(f, .2, "sine", .1, i*.08); }); },
+  lose: function(){ tone(220, .22, "sine", .09); tone(165, .3, "sine", .09, .16); }
+};
+
+/* ---------- 棋盘算法 ---------- */
+function neighbors(i){
+  var r = (i/COLS)|0, c = i%COLS, out = [];
+  if(c>0) out.push(i-1); if(c<COLS-1) out.push(i+1);
+  if(r>0) out.push(i-COLS); if(r<ROWS-1) out.push(i+COLS);
+  return out;
+}
+function flood(b, seed){
+  var col = b[seed], seen = new Uint8Array(N), stack = [seed], region = [];
+  seen[seed] = 1;
+  while(stack.length){
+    var i = stack.pop(); region.push(i);
+    var nb = neighbors(i);
+    for(var k=0;k<nb.length;k++){ var j = nb[k]; if(!seen[j] && b[j]===col){ seen[j]=1; stack.push(j); } }
+  }
+  return region;
+}
+function components(b){
+  var seen = new Uint8Array(N), comps = [];
+  for(var i=0;i<N;i++){ if(seen[i]) continue; var cells = flood(b,i);
+    for(var k=0;k<cells.length;k++) seen[cells[k]]=1;
+    comps.push({cells:cells, color:b[i]}); }
+  return comps;
+}
+function growRegion(b, region, c){
+  var seen = new Uint8Array(N), i, k, stack = [];
+  for(i=0;i<region.length;i++) seen[region[i]]=1;
+  var out = region.slice();
+  for(i=0;i<region.length;i++){ var nb = neighbors(region[i]);
+    for(k=0;k<nb.length;k++){ var j = nb[k]; if(!seen[j] && b[j]===c){ seen[j]=1; stack.push(j); } } }
+  while(stack.length){ var x = stack.pop(); out.push(x);
+    var nb2 = neighbors(x);
+    for(k=0;k<nb2.length;k++){ var j2 = nb2[k]; if(!seen[j2] && b[j2]===c){ seen[j2]=1; stack.push(j2); } } }
+  return out;
+}
+function greedySolve(b, targetColor){
+  var comps = components(b), bestComp = comps[0], i;
+  for(i=1;i<comps.length;i++) if(comps[i].cells.length > bestComp.cells.length) bestComp = comps[i];
+  var sim = b.slice(), region = bestComp.cells.slice(), col = bestComp.color, steps = 0, guard = 0;
+  while(region.length < N && guard < 80){
+    guard++;
+    var bestGain = -1, bestC = col, bestR = region;
+    for(var c=0;c<4;c++){ if(c===col) continue;
+      var r2 = growRegion(sim, region, c), gain = r2.length - region.length;
+      if(gain > bestGain){ bestGain = gain; bestC = c; bestR = r2; } }
+    for(i=0;i<region.length;i++) sim[region[i]] = bestC;
+    region = bestR; col = bestC; steps++;
+  }
+  if(col !== targetColor) steps++;
+  return steps;
+}
+function allSame(b, c){ for(var i=0;i<N;i++) if(b[i]!==c) return false; return true; }
+function ri(n){ return Math.floor(Math.random()*n); }
+
+/* ---------- 开局 / 重置 ---------- */
+function parseWorldGrid(g){
+  var b = new Array(N);
+  for(var i=0;i<N;i++) b[i] = COLOR_IDX[g.charAt(i)];
+  return b;
+}
+function setupLevel(){
+  over = false;
+  var L = (mode === "world") ? WORLD_LEVELS[worldIdx] : TRAIN_LEVELS[round-1];
+  board = parseWorldGrid(L.grid);
+  target = L.target;
+  budget = L.budget;
+  refSteps = budget;
+  initialBoard = board.slice();
+  stepsLeft = budget + (assistOn ? 2 : 0);
+  brush = 0;                 // 每关开始默认红色画笔
+  hideOverlay();
+  $("bubble").classList.remove("show");
+  renderAll(true);
+}
+function resetLevel(){
+  over = false;
+  board = initialBoard.slice();
+  stepsLeft = budget + (assistOn ? 2 : 0);
+  brush = 0;
+  hideOverlay();
+  renderAll(true);
+}
+
+/* ---------- 渲染 ---------- */
+var cellEls = [];
+function buildBoard(){
+  boardEl.innerHTML = ""; cellEls = [];
+  for(var i=0;i<N;i++){
+    (function(idx){
+      var d = document.createElement("div");
+      d.className = "cell c0";
+      d.addEventListener("pointerdown", function(ev){ ev.preventDefault(); onCellTap(idx, d, ev); });
+      boardEl.appendChild(d); cellEls.push(d);
+    })(i);
+  }
+}
+function renderBoard(){ for(var i=0;i<N;i++) cellEls[i].className = "cell c"+board[i]; }
+function renderHUD(){
+  manaEl.textContent = stepsLeft;
+  $("score").textContent = score;
+  $("best").textContent = best;
+  $("assisttag").style.display = assistOn ? "" : "none";
+  if(mode === "world"){ $("questlv").textContent = "画盘-" + (worldIdx+1); }
+  else{ $("questlv").textContent = "修炼-" + round; }
+  var tn = $("targetname");
+  tn.textContent = COLOR_NAMES[target];
+  var tcol = COLOR_TEXT[target];
+  tn.style.color = tcol;
+  $("goalwrap").style.color = tcol;                 /* 【】与目标同色 */
+  $("quest").style.borderColor = tcol;              /* 任务卡边框随目标色 */
+  $("failline").textContent = failCount > 0 ? ("本关已失败 " + failCount + " 次" + (failCount>=2 && !assistOn ? "，再失败 " + (3-failCount) + " 次师姐会来帮忙" : "")) : "";
+  $("modelabel").textContent = (mode === "world") ? "修炼模式" : "世界模式";
+  renderPanel();
+  renderBrushes();
+}
+function renderBrushes(){
+  var bs = document.querySelectorAll(".brush");
+  for(var i=0;i<bs.length;i++) bs[i].classList.toggle("active", i===brush);
+}
+function renderAll(rebuild){ if(rebuild && cellEls.length!==N) buildBoard(); renderBoard(); renderHUD(); }
+
+/* ---------- 气泡 / Toast ---------- */
+var bubbleTimer = null;
+function bubble(text, ms){
+  var b = $("bubble");
+  b.textContent = text; b.classList.add("show");
+  if(bubbleTimer) clearTimeout(bubbleTimer);
+  bubbleTimer = setTimeout(function(){ b.classList.remove("show"); }, ms||2200);
+}
+var toastTimer = null;
+function toast(text){
+  var t = $("toast");
+  t.textContent = text; t.classList.add("show");
+  if(toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ t.classList.remove("show"); }, 1500);
+}
+function shijieMood(mood){
+  var el = $("shijie");
+  el.classList.remove("cheer","sad","boost");
+  void el.offsetWidth;
+  if(mood) el.classList.add(mood);
+  if(mood === "sad") setTimeout(function(){ el.classList.remove("sad"); }, 1100);
+  if(mood === "cheer") setTimeout(function(){ el.classList.remove("cheer"); }, 900);
+  if(mood === "boost") setTimeout(function(){ el.classList.remove("boost"); }, 700);
+}
+
+/* ---------- 交互 ---------- */
+var SPLASH_CSS = ["#f2a398", "#f6dd8d", "#a7c9f0", "#a6e2ad"];
+function onCellTap(idx, el, ev){
+  if(over) return;
+  if(board[idx] === brush){
+    el.classList.remove("shake"); void el.offsetWidth; el.classList.add("shake");
+    sfx.bad();
+    return;
+  }
+  /* 逻辑即时生效 */
+  var region = flood(board, idx), i;
+  var regionSet = new Uint8Array(N);
+  for(i=0;i<region.length;i++){ board[region[i]] = brush; regionSet[region[i]] = 1; }
+  stepsLeft--;
+  sfx.dye(brush);
+
+  /* 染色泼溅：从点击格向外按 BFS 距离逐格扩散（游戏内同款） */
+  var dist = new Int16Array(N).fill(-1);
+  dist[idx] = 0;
+  var q = [idx], maxD = 0;
+  while(q.length){
+    var cur = q.shift(), nb = neighbors(cur);
+    for(i=0;i<nb.length;i++){
+      var j = nb[i];
+      if(regionSet[j] && dist[j] < 0){ dist[j] = dist[cur] + 1; if(dist[j] > maxD) maxD = dist[j]; q.push(j); }
+    }
+  }
+  for(i=0;i<region.length;i++){
+    (function(cellIdx, d){
+      setTimeout(function(){
+        var cellEl = cellEls[cellIdx];
+        cellEl.className = "cell c" + board[cellIdx];
+        var sp = document.createElement("span");
+        sp.className = "splash";
+        sp.style.setProperty("--sc", SPLASH_CSS[brush]);
+        cellEl.appendChild(sp);
+        setTimeout(function(){ if(sp.parentNode) sp.parentNode.removeChild(sp); }, 420);
+      }, d * 40);
+    })(region[i], dist[region[i]]);
+  }
+  renderHUD();
+
+  var settle = maxD * 40 + 420;
+  if(allSame(board, target)){ setTimeout(winSeq, Math.max(200, settle - 250)); over = true; return; }
+  if(stepsLeft <= 0){ over = true; setTimeout(loseSeq, Math.max(150, settle - 250)); }
+}
+
+/* ---------- 失败：直接重置，不打断 ---------- */
+function loseSeq(){
+  over = true;
+  failCount++;
+  sfx.lose();
+  shijieMood("sad");
+  var needAssist = (failCount >= 3) && !assistOn;
+  if(needAssist){
+    assistOn = true;
+    setTimeout(function(){
+      shijieMood("boost");
+      bubble(TALK_ASSIST, 2600);
+      sfx.boost();
+    }, 500);
+  }
+  toast("步数耗尽，已重置画盘");
+  setTimeout(function(){ resetLevel(); }, 700);
+}
+
+/* ---------- 胜利 ---------- */
+function showOverlay(data){
+  $("ovtitle").textContent = data.title;
+  $("ovsub").innerHTML = data.sub;
+  $("ovgain").textContent = data.gain || "";
+  var btns = $("ovbtns"); btns.innerHTML = "";
+  data.btns.forEach(function(b){
+    var btn = document.createElement("button");
+    btn.className = "btn" + (b.ghost ? " ghost" : "");
+    btn.textContent = b.label;
+    btn.addEventListener("click", b.fn);
+    btns.appendChild(btn);
+  });
+  $("overlay").classList.add("show");
+}
+function hideOverlay(){ $("overlay").classList.remove("show"); }
+
+function winSeq(){
+  over = true;
+  var gain = 80 + stepsLeft*15 + (mode==="world" ? (worldIdx+1)*8 : round*5);
+  score += gain;
+  if(score > best){ best = score; localStorage.setItem("mshc_best", String(best)); }
+  if(mode === "world") clearedWorld[worldIdx] = 1; else clearedTrain[round-1] = 1;
+  failCount = 0; assistOn = false;
+  saveProgress();
+  sfx.win();
+  shijieMood("cheer");
+  bubble(TALK_WIN[ri(TALK_WIN.length)], 2000);
+  petalRain();
+  setTimeout(function(){
+    if(mode === "world" && worldIdx >= WORLD_LEVELS.length-1){
+      showOverlay({
+        title: "全部通关",
+        sub: WORLD_LEVELS.length + " 座画盘全部恢复同色，<br>师姐为你骄傲。",
+        gain: "+" + gain + " 分",
+        btns: [
+          {label:"修炼模式", fn:function(){ switchMode("train"); }},
+          {label:"再刷一遍", ghost:true, fn:function(){ worldIdx = 0; saveProgress(); setupLevel(); }}
+        ]
+      });
+    }else if(mode === "train" && round >= TRAIN_LEVELS.length){
+      showOverlay({
+        title: "修炼大成",
+        sub: "30次修炼全部完成，<br>恭喜从师姐这出师了。",
+        gain: "+" + gain + " 分",
+        btns: [
+          {label:"重新修炼", fn:function(){ round = 1; saveProgress(); setupLevel(); }},
+          {label:"世界模式", ghost:true, fn:function(){ switchMode("world"); }}
+        ]
+      });
+    }else{
+      var nextLabel = (mode === "world") ? ("画盘-" + (worldIdx+2)) : ("修炼-" + (round+1));
+      showOverlay({
+        title: "妙手回春",
+        sub: "剩余 <b>" + stepsLeft + "</b> 步 · 下一关：" + nextLabel,
+        gain: "+" + gain + " 分",
+        btns: [ {label:"下一关", fn:function(){ advance(); }} ]
+      });
+    }
+    renderHUD();
+  }, 700);
+}
+function advance(){
+  if(mode === "world") worldIdx++; else round++;
+  saveProgress();
+  setupLevel();
+}
+
+/* ---------- 模式切换 / 选关 ---------- */
+function switchMode(to){
+  if(to === mode){ setupLevel(); return; }
+  mode = to;
+  failCount = 0; assistOn = false;
+  setupLevel();
+}
+function jumpLevel(i){
+  if(mode === "world") worldIdx = Math.max(0, Math.min(WORLD_LEVELS.length-1, i));
+  else round = Math.max(1, Math.min(TRAIN_LEVELS.length, i+1));
+  failCount = 0; assistOn = false;
+  saveProgress();
+  setupLevel();
+}
+function renderPanel(){
+  var isWorld = (mode === "world");
+  var count = isWorld ? WORLD_LEVELS.length : TRAIN_LEVELS.length;
+  var cur = isWorld ? worldIdx : round-1;
+  var done = isWorld ? clearedWorld : clearedTrain;
+  $("lp-mode").textContent = isWorld ? "世界模式" : "修炼模式";
+  $("lp-count").textContent = "共 " + count + " 关 · 通关解锁下一关";
+  var lockSvg = "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.4' stroke-linecap='round'><rect x='5' y='11' width='14' height='9' rx='2'/><path d='M8 11 V7 a4 4 0 0 1 8 0 v4'/></svg>";
+  var html = "";
+  for(var i=0;i<count;i++){
+    var open = (i === 0) || done[i-1];
+    html += "<div class='chip" + (i===cur ? " cur" : "") + (done[i] ? " done" : "") + (!open ? " lock" : "") + "' data-i='" + i + "'>"
+          + (open ? (i+1) : lockSvg) + "</div>";
+  }
+  $("chips").innerHTML = html;
+  var list = $("chips").children;
+  for(var k=0;k<list.length;k++){
+    (function(el){
+      el.addEventListener("pointerdown", function(ev){
+        ev.preventDefault();
+        var i = parseInt(el.getAttribute("data-i"), 10);
+        var open = (i === 0) || done[i-1];
+        if(!open){
+          el.classList.remove("shake2"); void el.offsetWidth; el.classList.add("shake2");
+          sfx.bad();
+          toast("这关还锁着，先通关前面的关卡");
+          return;
+        }
+        jumpLevel(i);
+        sfx.pick();
+      });
+    })(list[k]);
+  }
+}
+
+/* ---------- 花瓣雨 ---------- */
+function petalRain(){
+  for(var i=0;i<30;i++){
+    var c = document.createElement("div");
+    c.className = "petal";
+    c.style.left = (Math.random()*100) + "vw";
+    c.style.top = "-30px";
+    var s = 9 + Math.random()*10;
+    c.style.width = s + "px"; c.style.height = s + "px";
+    c.style.background = PETAL_COLORS[ri(4)];
+    c.style.animationDuration = (1.2 + Math.random()*1.2) + "s";
+    c.style.animationDelay = (Math.random()*0.45) + "s";
+    document.body.appendChild(c);
+    (function(el){ setTimeout(function(){ if(el.parentNode) el.parentNode.removeChild(el); }, 3200); })(c);
+  }
+}
+
+/* ---------- 事件绑定 ---------- */
+var brushEls = document.querySelectorAll(".brush");
+for(var i=0;i<brushEls.length;i++){
+  (function(el){
+    el.addEventListener("pointerdown", function(ev){
+      ev.preventDefault();
+      brush = parseInt(el.getAttribute("data-c"), 10);
+      renderBrushes(); sfx.pick();
+    });
+  })(brushEls[i]);
+}
+$("btnReset").addEventListener("click", function(){
+  if(over) return;
+  sfx.reset();
+  resetLevel();
+  toast("已重置画盘");
+});
+$("btnMode").addEventListener("click", function(){
+  sfx.pick();
+  switchMode(mode === "world" ? "train" : "world");
+  toast(mode === "world" ? "世界模式 · 画盘-" + (worldIdx+1) : "修炼模式 · 修炼-" + round);
+});
+$("btnSound").addEventListener("click", function(){
+  soundOn = !soundOn;
+  localStorage.setItem("mshc_sound", soundOn ? "1" : "0");
+  $("soundwave").style.display = soundOn ? "" : "none";
+  if(soundOn) sfx.pick();
+});
+
+/* ---------- 彩蛋：点师姐三下，给本关最优解 ---------- */
+var GUIDE_NAMES = {R:"红色", Y:"黄色", B:"蓝色", G:"绿色"};
+var GUIDE_COLORS = {R:"#d9534f", Y:"#d9a520", B:"#4a90d9", G:"#3fa65a"};
+function flashCell(i){
+  var el = cellEls[i];
+  el.classList.remove("guideflash"); void el.offsetWidth;
+  el.classList.add("guideflash");
+  setTimeout(function(){ el.classList.remove("guideflash"); }, 2600);
+}
+function showGuide(){
+  var L = (mode === "world") ? WORLD_LEVELS[worldIdx] : TRAIN_LEVELS[round-1];
+  if(!L.tap || !L.seq) return;
+  var seqHtml = L.seq.split("").map(function(ch, i){
+    return (i ? " → " : "") + "<b style='color:" + GUIDE_COLORS[ch] + "'>" + GUIDE_NAMES[ch] + "</b>";
+  }).join("");
+  showOverlay({
+    title: "师姐的最优解",
+    sub: "点<b>第 " + L.tap[0] + " 行第 " + L.tap[1] + " 列</b>那一格，<br>一直点它、别换地方。<br>画笔顺序：" + seqHtml + "<br>共 " + L.seq.length + " 步，一步都不浪费。",
+    gain: "",
+    btns: [{label:"知道了", fn:function(){
+      hideOverlay();
+      flashCell((L.tap[0]-1)*COLS + (L.tap[1]-1));
+    }}]
+  });
+}
+var eggTaps = 0, eggTimer = null;
+$("shijie").addEventListener("pointerdown", function(ev){
+  ev.preventDefault();
+  if(over) return;
+  eggTaps++;
+  shijieMood("cheer");
+  if(eggTimer) clearTimeout(eggTimer);
+  eggTimer = setTimeout(function(){ eggTaps = 0; }, 1200);
+  if(eggTaps >= 3){
+    eggTaps = 0;
+    sfx.boost();
+    showGuide();
+  }
+});
+
+/* ---------- 教程（师姐引导新玩家） ---------- */
+var TUT = [
+  {sel:null,        text:"欢迎来到妙手回春！我是师姐，用 30 秒带你上手。"},
+  {sel:"#quest",    text:"这里是本关目标：把所有颜色格恢复成指定颜色。"},
+  {sel:"#stepsline",text:"这是剩余步数——每染一块区域，消耗 1 步。步数用完还没同色就失败。"},
+  {sel:"#brushes",  text:"先在这里选一支画笔（颜色）。"},
+  {sel:"#boardwrap",text:"再点棋盘上的格子——它所在的整片连通同色区域，都会变成画笔色。"},
+  {sel:null,        text:"心法：盯准最大的一块区域，围着它换色。一关失败三次，或是点击师姐三次，我会偷偷来帮你。去吧！"}
+];
+var tutIdx = 0;
+function tutShow(i){
+  tutIdx = i;
+  var s = TUT[i];
+  $("tuttxt").textContent = s.text;
+  $("tutnext").textContent = (i === TUT.length-1) ? "开始吧" : "下一步";
+  var dots = "";
+  for(var k=0;k<TUT.length;k++) dots += "<i class='" + (k===i?"on":"") + "'></i>";
+  $("tutdots").innerHTML = dots;
+  var hole = $("tuthole"), card = $("tutcard");
+  card.style.left = "50%";
+  card.style.transform = "translateX(-50%)";
+  if(!s.sel){
+    hole.style.width = "0px"; hole.style.height = "0px";
+    hole.style.left = "50%"; hole.style.top = "38%";
+    card.style.top = "28%";
+  }else{
+    var r = document.querySelector(s.sel).getBoundingClientRect();
+    var pad = 6;
+    hole.style.left = (r.left-pad) + "px";
+    hole.style.top = (r.top-pad) + "px";
+    hole.style.width = (r.width+pad*2) + "px";
+    hole.style.height = (r.height+pad*2) + "px";
+    var cardH = 190, top = r.bottom + 12;
+    if(top + cardH > window.innerHeight - 12) top = r.top - cardH - 12;
+    if(top < 8) top = 8;
+    card.style.top = top + "px";
+  }
+}
+function tutStart(){ tutIdx = 0; $("tut").classList.add("show"); tutShow(0); }
+function tutEnd(){
+  $("tut").classList.remove("show");
+  localStorage.setItem("mshc_tut", "1");
+}
+$("tutnext").addEventListener("click", function(){
+  sfx.pick();
+  if(tutIdx >= TUT.length-1) tutEnd(); else tutShow(tutIdx+1);
+});
+$("tutskip").addEventListener("click", function(){ sfx.pick(); tutEnd(); });
+$("btnTut").addEventListener("click", function(){ sfx.pick(); tutStart(); });
+
+/* ---------- 启动 ---------- */
+var SHIJIE_SRC = "__B64_FULL__";
+$("shijieimg").src = SHIJIE_SRC;
+$("tutimg").src = SHIJIE_SRC;
+$("soundwave").style.display = soundOn ? "" : "none";
+buildBoard();
+setupLevel();
+if(!localStorage.getItem("mshc_tut")){ setTimeout(tutStart, 600); }
+
+/* 调试钩子（验收用） */
+window.__game = {
+  get board(){ return board; }, get target(){ return target; },
+  get stepsLeft(){ return stepsLeft; }, get over(){ return over; },
+  get budget(){ return budget; }, get mode(){ return mode; },
+  get round(){ return round; }, get worldIdx(){ return worldIdx; },
+  get failCount(){ return failCount; }, get assistOn(){ return assistOn; },
+  get initial(){ return initialBoard; },
+  tap: function(i){ onCellTap(i, cellEls[i], {}); },
+  setBrush: function(c){ brush = c; renderBrushes(); },
+  get brush(){ return brush; },
+  solve: function(){ return greedySolve(board, target); },
+  get comps(){ return components(board).length; },
+  reset: function(){ resetLevel(); },
+  toWorld: function(){ switchMode("world"); },
+  toTrain: function(){ switchMode("train"); },
+  advance: function(){ advance(); },
+  jump: function(i){ jumpLevel(i); },
+  guide: function(){ showGuide(); },
+  get curLevel(){ return (mode === "world") ? WORLD_LEVELS[worldIdx] : TRAIN_LEVELS[round-1]; },
+  get clearedT(){ return Object.keys(clearedTrain).length; },
+  tut: function(){ tutStart(); },
+  tutNext: function(){ if(tutIdx >= TUT.length-1) tutEnd(); else tutShow(tutIdx+1); },
+  get tutOpen(){ return $("tut").classList.contains("show"); },
+  get tutText(){ return $("tuttxt").textContent; }
+};
+
+})();
+</script>
+</body>
+</html>
